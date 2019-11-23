@@ -21,7 +21,9 @@ import { AES256 } from '@ionic-native/aes-256';
   providers: [
     StatusBar,
     SplashScreen,
-    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }
+    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
+    File,
+    FileOpener
   ],
   bootstrap: [AppComponent]
 })
