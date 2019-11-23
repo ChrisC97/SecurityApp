@@ -14,6 +14,7 @@ export class HomePage implements OnInit {
   folder = '';
   copyFile: Entry = null;
   shouldMove = false;
+  ROOT_DIRECTORY = 'file:///';
  
   constructor(
     private file: File,
@@ -36,7 +37,8 @@ export class HomePage implements OnInit {
       this.copyFile = null;
       this.shouldMove = false;
  
-      this.file.listDir(this.file.dataDirectory, this.folder).then(res => {
+      //this.file.listDir(this.file.dataDirectory, this.folder).then(res => {
+      this.file.listDir(this.ROOT_DIRECTORY, this.folder).then(res => {
         this.directories = res;
       });
     });
