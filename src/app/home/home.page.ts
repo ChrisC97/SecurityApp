@@ -3,6 +3,7 @@ import { File, Entry } from '@ionic-native/file/ngx';
 import { Platform, AlertController, ToastController } from '@ionic/angular';
 import { FileOpener } from '@ionic-native/file-opener/ngx';
 import { Router, ActivatedRoute } from '@angular/router';
+import {archiver} from 'archiver';
  
 @Component({
   selector: 'app-home',
@@ -134,16 +135,35 @@ export class HomePage implements OnInit {
     this.shouldMove = moveFile;
   }
 
-  startArchiveSelection(){
+  StartArchiveSelection(){
     this.archiveSelectionMode = true;
     this.archiveFiles = [];
   }
 
-  async itemClicked(file: Entry) {
-    if(this.archiveSelectionMode){
+  FinishArchiveSelection(){
+    this.archiveSelectionMode = false;
+    this.archiveFiles = [];
+  }
 
+  CancelArchiveSelection(){
+    this.archiveSelectionMode = false;
+    this.archiveFiles = [];
+  }
+
+  async itemClicked(file: Entry) {
+    // We're in the mode where we select the files to archive.
+    if(this.archiveSelectionMode){
+      // If it's in the list, remove it.
+      if(this.archiveFiles.includes(file.fullPath)){
+        var index = this.archiveFiles.indexOf(5);
+        if (index > -1) {
+          this.archiveFiles.splice(index, 1);
+        }
+      }else{
+        // Not in the list, so add it.
+        this.archiveFiles.push(file.fullPath);
+      }
     } else if (this.copyFile) {
-      // Copy is in action!
       if (!file.isDirectory) {
         let toast = await this.toastCtrl.create({
           message: 'Please select a folder for your operation'

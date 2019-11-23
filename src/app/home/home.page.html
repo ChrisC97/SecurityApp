@@ -1,7 +1,8 @@
 <ion-header>
   <ion-toolbar [color]="archiveSelectionMode ? 'secondary' : 'primary'">
-    <ion-buttons slot="start" *ngIf="folder != ''">
-      <ion-back-button></ion-back-button>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button *ngIf="folder != ''"></ion-back-button>
     </ion-buttons>
     <ion-title>
       {{ folder || 'File Explorer' }}
@@ -49,11 +50,17 @@
     </ion-fab-button>
  
     <ion-fab-list side="top">
-      <ion-fab-button (click)="createFolder()">
+      <ion-fab-button (click)="createFolder()" >
         <ion-icon name="folder"></ion-icon>
       </ion-fab-button>
-      <ion-fab-button (click)="startArchiveSelection()">
+      <ion-fab-button (click)="StartArchiveSelection()" *ngIf="!archiveSelectionMode">
         <ion-icon name="briefcase"></ion-icon>
+      </ion-fab-button>
+      <ion-fab-button (click)="FinishArchiveSelection()" *ngIf="archiveSelectionMode">
+          <ion-icon name="checkmark"></ion-icon>
+      </ion-fab-button>
+      <ion-fab-button (click)="CancelArchiveSelection()" *ngIf="archiveSelectionMode">
+          <ion-icon name="exit"></ion-icon>
       </ion-fab-button>
     </ion-fab-list>
   </ion-fab>
