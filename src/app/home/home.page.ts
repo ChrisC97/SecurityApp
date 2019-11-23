@@ -15,6 +15,10 @@ export class HomePage implements OnInit {
   copyFile: Entry = null;
   shouldMove = false;
   ROOT_DIRECTORY = 'file:///';
+
+  // Info
+  archiveSelectionMode = false;
+  archiveFiles = [];
  
   constructor(
     private file: File,
@@ -130,8 +134,15 @@ export class HomePage implements OnInit {
     this.shouldMove = moveFile;
   }
 
+  startArchiveSelection(){
+    this.archiveSelectionMode = true;
+    this.archiveFiles = [];
+  }
+
   async itemClicked(file: Entry) {
-    if (this.copyFile) {
+    if(this.archiveSelectionMode){
+
+    } else if (this.copyFile) {
       // Copy is in action!
       if (!file.isDirectory) {
         let toast = await this.toastCtrl.create({

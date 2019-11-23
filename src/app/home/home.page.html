@@ -1,5 +1,5 @@
 <ion-header>
-  <ion-toolbar [color]="copyFile ? 'secondary' : 'primary'">
+  <ion-toolbar [color]="archiveSelectionMode ? 'secondary' : 'primary'">
     <ion-buttons slot="start" *ngIf="folder != ''">
       <ion-back-button></ion-back-button>
     </ion-buttons>
@@ -52,8 +52,8 @@
       <ion-fab-button (click)="createFolder()">
         <ion-icon name="folder"></ion-icon>
       </ion-fab-button>
-      <ion-fab-button (click)="createFile()">
-        <ion-icon name="document"></ion-icon>
+      <ion-fab-button (click)="startArchiveSelection()">
+        <ion-icon name="briefcase"></ion-icon>
       </ion-fab-button>
     </ion-fab-list>
   </ion-fab>
