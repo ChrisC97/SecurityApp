@@ -50,16 +50,16 @@
     </ion-fab-button>
  
     <ion-fab-list side="top">
-      <ion-fab-button (click)="createFolder()" >
+      <ion-fab-button (click)="createFolder()" data-desc="Create Folder">
         <ion-icon name="folder"></ion-icon>
       </ion-fab-button>
-      <ion-fab-button (click)="StartArchiveSelection()" *ngIf="!archiveSelectionMode">
+      <ion-fab-button (click)="StartArchiveSelection()" *ngIf="!archiveSelectionMode" data-desc="Start Archive Selection">
         <ion-icon name="briefcase"></ion-icon>
       </ion-fab-button>
-      <ion-fab-button (click)="FinishArchiveSelection()" *ngIf="archiveSelectionMode">
+      <ion-fab-button (click)="FinishArchiveSelection()" *ngIf="archiveSelectionMode" data-desc="Create Archive">
           <ion-icon name="checkmark"></ion-icon>
       </ion-fab-button>
-      <ion-fab-button (click)="CancelArchiveSelection()" *ngIf="archiveSelectionMode">
+      <ion-fab-button (click)="CancelArchiveSelection()" *ngIf="archiveSelectionMode" data-desc="Cancel Archive">
           <ion-icon name="exit"></ion-icon>
       </ion-fab-button>
     </ion-fab-list>

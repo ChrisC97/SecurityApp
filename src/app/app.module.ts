@@ -14,10 +14,12 @@ import { FileOpener } from '@ionic-native/file-opener/ngx';
 
 import { AES256 } from '@ionic-native/aes-256';
 
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+
 @NgModule({
   declarations: [AppComponent],
   entryComponents: [],
-  imports: [BrowserModule, IonicModule.forRoot(), AppRoutingModule],
+  imports: [BrowserModule, IonicModule.forRoot(), AppRoutingModule, FontAwesomeModule],
   providers: [
     StatusBar,
     SplashScreen,
@@ -27,4 +29,5 @@ import { AES256 } from '@ionic-native/aes-256';
   ],
   bootstrap: [AppComponent]
 })
-export class AppModule {}
+export class AppModule {
+}

@@ -4,6 +4,7 @@ import { Platform, AlertController, ToastController } from '@ionic/angular';
 import { FileOpener } from '@ionic-native/file-opener/ngx';
 import { Router, ActivatedRoute } from '@angular/router';
 import {archiver} from 'archiver';
+import { faSdCard } from '@fortawesome/free-solid-svg-icons';
  
 @Component({
   selector: 'app-home',
