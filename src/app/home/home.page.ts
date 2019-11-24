@@ -5,6 +5,8 @@ import { FileOpener } from '@ionic-native/file-opener/ngx';
 import { Router, ActivatedRoute } from '@angular/router';
 import {archiver} from 'archiver';
 import { faSdCard } from '@fortawesome/free-solid-svg-icons';
+
+import { FileDef } from '../interfaces/filedef';
  
 @Component({
   selector: 'app-home',
@@ -19,8 +21,8 @@ export class HomePage implements OnInit {
   ROOT_DIRECTORY = 'file:///';
 
   // Info
-  archiveSelectionMode = false;
-  archiveFiles = [];
+  static archiveSelectionMode = false;
+  static archiveFiles:Entry[] = [];
  
   constructor(
     private file: File,
@@ -32,6 +34,14 @@ export class HomePage implements OnInit {
     private toastCtrl: ToastController
   ) {}
  
+  ArchiveModeCheck(){
+    return HomePage.archiveSelectionMode;
+  }
+
+  CopyModeCheck(){
+    return false;
+  }
+
   ngOnInit() {
     this.folder = this.route.snapshot.paramMap.get('folder') || '';
     this.loadDocuments();
@@ -42,8 +52,8 @@ export class HomePage implements OnInit {
       // Reset for later copy/move operations
       this.copyFile = null;
       this.shouldMove = false;
- 
-      //this.file.listDir(this.file.dataDirectory, this.folder).then(res => {
+
+      // Naviagate to the folder (root directory + the directory of the file/folder).
       this.file.listDir(this.ROOT_DIRECTORY, this.folder).then(res => {
         this.directories = res;
       });
@@ -124,6 +134,25 @@ export class HomePage implements OnInit {
     await alert.present();
   }
 
+  async CheckArchiveFiles(){
+    let str:string = "";
+    for(let v of HomePage.archiveFiles){
+      str += v.fullPath + "\n";
+    }
+
+    let alert = await this.alertCtrl.create({
+      header: 'Files Selected',
+      message: str,
+      buttons: [
+        {
+          text: 'Confirm'
+        }
+      ]
+    });
+   
+    await alert.present();
+  }
+
   deleteFile(file: Entry) {
     let path = this.file.dataDirectory + this.folder;
     this.file.removeFile(path, file.name).then(() => {
@@ -137,34 +166,47 @@ export class HomePage implements OnInit {
   }
 
   StartArchiveSelection(){
-    this.archiveSelectionMode = true;
-    this.archiveFiles = [];
+    HomePage.archiveSelectionMode = true;
+    HomePage.archiveFiles = [];
   }
 
-  FinishArchiveSelection(){
-    this.archiveSelectionMode = false;
-    this.archiveFiles = [];
+  async FinishArchiveSelection(){
+    HomePage.archiveSelectionMode = false;
+
+    // Iterate through each file.
+    for(let af of HomePage.archiveFiles){
+      let f = await this.file.resolveDirectoryUrl(af.fullPath.replace(af.name, ''));
+      this.file.getFile(f, af.name, { create: false });
+    }
+
+    HomePage.archiveFiles = [];
   }
 
   CancelArchiveSelection(){
-    this.archiveSelectionMode = false;
-    this.archiveFiles = [];
+    HomePage.archiveSelectionMode = false;
+    HomePage.archiveFiles = [];
+  }
+
+  ToggleArchiveSelection(file: Entry){
+    // If it's in the list, remove it.
+    if(HomePage.archiveFiles.includes(file)){
+      let index = HomePage.archiveFiles.indexOf(file);
+      if(index > -1){
+        HomePage.archiveFiles.splice(index, 1);
+      }
+    }else{
+      // Not in the list, so add it.
+      HomePage.archiveFiles.push(file);
+    }
+  }
+
+  CheckIfFileInArchiveList(file: Entry){
+    return HomePage.archiveFiles.includes(file);
   }
 
   async itemClicked(file: Entry) {
     // We're in the mode where we select the files to archive.
-    if(this.archiveSelectionMode){
-      // If it's in the list, remove it.
-      if(this.archiveFiles.includes(file.fullPath)){
-        var index = this.archiveFiles.indexOf(5);
-        if (index > -1) {
-          this.archiveFiles.splice(index, 1);
-        }
-      }else{
-        // Not in the list, so add it.
-        this.archiveFiles.push(file.fullPath);
-      }
-    } else if (this.copyFile) {
+    if (this.copyFile) {
       if (!file.isDirectory) {
         let toast = await this.toastCtrl.create({
           message: 'Please select a folder for your operation'

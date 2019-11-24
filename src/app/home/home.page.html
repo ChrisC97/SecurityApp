@@ -1,5 +1,5 @@
 <ion-header>
-  <ion-toolbar [color]="archiveSelectionMode ? 'secondary' : 'primary'">
+  <ion-toolbar [color]="(ArchiveModeCheck() || CopyModeCheck()) ? 'secondary' : 'primary'">
     <ion-buttons slot="start">
       <ion-menu-button></ion-menu-button>
       <ion-back-button *ngIf="folder != ''"></ion-back-button>
@@ -17,7 +17,7 @@
  
   <ion-list>
     <ion-item-sliding *ngFor="let f of directories">
-      <ion-item (click)="itemClicked(f)">
+      <ion-item [color]="!CheckIfFileInArchiveList(f) ? 'light' : 'secondary'" (click)="itemClicked(f)">
         <ion-icon name="folder" slot="start" *ngIf="f.isDirectory"></ion-icon>
         <ion-icon name="document" slot="start" *ngIf="!f.isDirectory"></ion-icon>
         <ion-label text-wrap>
@@ -27,17 +27,23 @@
       </ion-item>
  
       <ion-item-options side="start" *ngIf="!f.isDirectory">
-        <ion-item-option (click)="deleteFile(f)" color="danger">
+        <ion-item-option (click)="deleteFile(f)" color="danger" *ngIf="!ArchiveModeCheck()">
           <ion-icon name="trash" slot="icon-only"></ion-icon>
         </ion-item-option>
       </ion-item-options>
  
       <ion-item-options side="end">
-        <ion-item-option (click)="startCopy(f)" color="success">
+        <ion-item-option (click)="startCopy(f)" color="success" *ngIf="!ArchiveModeCheck()">
           Copy
         </ion-item-option>
-        <ion-item-option (click)="startCopy(f, true)" color="primary">
+        <ion-item-option (click)="startCopy(f, true)" color="primary" *ngIf="!ArchiveModeCheck()">
           Move
+        </ion-item-option>
+        <ion-item-option (click)="ToggleArchiveSelection(f)" color="primary" *ngIf="ArchiveModeCheck() && !CheckIfFileInArchiveList(f)">
+            Archive
+        </ion-item-option>
+        <ion-item-option (click)="ToggleArchiveSelection(f)" color="primary" *ngIf="ArchiveModeCheck() && CheckIfFileInArchiveList(f)">
+            Remove
         </ion-item-option>
       </ion-item-options>
  
@@ -50,16 +56,19 @@
     </ion-fab-button>
  
     <ion-fab-list side="top">
+      <ion-fab-button (click)="CheckArchiveFiles()" *ngIf="ArchiveModeCheck()" data-desc="Selected Files">
+          <ion-icon name="help"></ion-icon>
+      </ion-fab-button>
       <ion-fab-button (click)="createFolder()" data-desc="Create Folder">
         <ion-icon name="folder"></ion-icon>
       </ion-fab-button>
-      <ion-fab-button (click)="StartArchiveSelection()" *ngIf="!archiveSelectionMode" data-desc="Start Archive Selection">
+      <ion-fab-button (click)="StartArchiveSelection()" *ngIf="!ArchiveModeCheck()" data-desc="Start Archive Selection">
         <ion-icon name="briefcase"></ion-icon>
       </ion-fab-button>
-      <ion-fab-button (click)="FinishArchiveSelection()" *ngIf="archiveSelectionMode" data-desc="Create Archive">
+      <ion-fab-button (click)="FinishArchiveSelection()" *ngIf="ArchiveModeCheck()" data-desc="Create Archive">
           <ion-icon name="checkmark"></ion-icon>
       </ion-fab-button>
-      <ion-fab-button (click)="CancelArchiveSelection()" *ngIf="archiveSelectionMode" data-desc="Cancel Archive">
+      <ion-fab-button (click)="CancelArchiveSelection()" *ngIf="ArchiveModeCheck()" data-desc="Cancel Archive">
           <ion-icon name="exit"></ion-icon>
       </ion-fab-button>
     </ion-fab-list>
