@@ -1,4 +1,4 @@
-package io.ionic.starter;
+package com.cc.securityapp;
 
 import android.os.Bundle;
 

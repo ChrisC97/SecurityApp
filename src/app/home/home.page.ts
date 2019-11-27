@@ -1,12 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import { File, Entry } from '@ionic-native/file/ngx';
+import { File, Entry, FileEntry, IFile } from '@ionic-native/file/ngx';
 import { Platform, AlertController, ToastController } from '@ionic/angular';
 import { FileOpener } from '@ionic-native/file-opener/ngx';
 import { Router, ActivatedRoute } from '@angular/router';
-import {archiver} from 'archiver';
-import { faSdCard } from '@fortawesome/free-solid-svg-icons';
-
-import { FileDef } from '../interfaces/filedef';
+declare var require: any;
  
 @Component({
   selector: 'app-home',
@@ -82,7 +79,7 @@ export class HomePage implements OnInit {
           handler: data => {
             this.file
               .createDir(
-                `${this.file.dataDirectory}/${this.folder}`,
+                `${this.ROOT_DIRECTORY}/${this.folder}`,
                 data.name,
                 false
               )
@@ -119,7 +116,7 @@ export class HomePage implements OnInit {
           handler: data => {
             this.file
               .writeFile(
-                `${this.file.dataDirectory}/${this.folder}`,
+                `${this.ROOT_DIRECTORY}/${this.folder}`,
                 `${data.name}.txt`,
                 `My custom text - ${new Date().getTime()}`
               )
@@ -153,8 +150,51 @@ export class HomePage implements OnInit {
     await alert.present();
   }
 
+  async PrintMessage(str:string){
+    let alert = await this.alertCtrl.create({
+      header: 'Message',
+      message: str,
+      buttons: [
+        {
+          text: 'Confirm'
+        }
+      ]
+    });
+   
+    await alert.present();
+  }
+
+  async EnterKey() {
+    let alert = await this.alertCtrl.create({
+      header: 'Enter Key',
+      message: 'Please Enter your key',
+      inputs: [
+        {
+          name: 'key',
+          type: 'text',
+          placeholder: ''
+        }
+      ],
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel',
+          cssClass: 'secondary'
+        },
+        {
+          text: 'Create',
+          handler: data => {
+            this.FinishArchiveSelection(data.key);
+          }
+        }
+      ]
+    });
+   
+    await alert.present();
+  }
+
   deleteFile(file: Entry) {
-    let path = this.file.dataDirectory + this.folder;
+    let path = this.ROOT_DIRECTORY + this.folder;
     this.file.removeFile(path, file.name).then(() => {
       this.loadDocuments();
     });
@@ -169,17 +209,83 @@ export class HomePage implements OnInit {
     HomePage.archiveSelectionMode = true;
     HomePage.archiveFiles = [];
   }
+  
+  HackFileReader(): FileReader {
+    const preZoneFileReader = ((window as any).FileReader as any).__zone_symbol__OriginalDelegate;
+    if (preZoneFileReader) {
+      console.log('%cHackFileReader: preZoneFileReader found creating new instance', 'font-size:3em; color: red');
+      return new preZoneFileReader();
+    } else {
+      console.log('%cHackFileReader: NO preZoneFileReader was found, returning regular File Reader', 'font-size:3em; color: red');
+      return new FileReader();
+    }
+  }
 
-  async FinishArchiveSelection(){
-    HomePage.archiveSelectionMode = false;
+  async FinishArchiveSelection(secureKey: string){
+    console.log("Finish start.");
+
+    let currentURL = await this.file.resolveDirectoryUrl(this.ROOT_DIRECTORY + "/" + this.folder);
+
+    var JSZip = require("jszip");
+    let zip = new JSZip();
+
+    let self = this;
 
     // Iterate through each file.
     for(let af of HomePage.archiveFiles){
-      let f = await this.file.resolveDirectoryUrl(af.fullPath.replace(af.name, ''));
-      this.file.getFile(f, af.name, { create: false });
+      let fURL = await this.file.resolveDirectoryUrl(this.ROOT_DIRECTORY + af.fullPath.replace(af.name, '')); 
+      let f:FileEntry = await this.file.getFile(fURL, af.name, { create: false });
+
+      console.log(`Start of file ${f.name}`);
+
+      // Get file data method.
+      const readUploadedFileAsText = (fi:FileEntry) => 
+      new Promise<Blob>((resolve, reject) => {
+        fi.file(function(file:IFile){
+          let fileReader = self.HackFileReader();
+
+          console.log("Start read");
+          console.log(file);
+
+          fileReader.onloadend = () => {console.log("On load end."); resolve( new Blob([fileReader.result], { type: file.type }) );};
+          //fileReader.onloadend = () => {console.log("On load end."); resolve(fileReader.result)};
+          fileReader.onerror = () => {console.log("Read error."); reject(fileReader.error)};
+
+          fileReader.readAsBinaryString(file);
+        },
+        function(){
+          reject("Problem getting file");
+        });
+      });
+
+      // Get file data.
+      let fileContents = await readUploadedFileAsText(f).catch(error => {
+        console.log(`Error on read ${error}`);
+      });
+      zip.file(f.name, (fileContents as Blob));
     }
 
+    console.log(`end of loop.`);
+
+    // Write zip file to storage.
+    console.log(JSZip.support);
+
+    zip.generateAsync({type:"blob"}).then(async function(content) {
+      console.log("Hi.");
+
+      await self.file.removeFile(self.ROOT_DIRECTORY + "/" + self.folder, "example.zip");
+
+      await self.file
+      .writeFile(
+        self.ROOT_DIRECTORY + "/" + self.folder,
+        "example.zip",
+        content
+      );
+    });
+
+    HomePage.archiveSelectionMode = false;
     HomePage.archiveFiles = [];
+    self.loadDocuments();
   }
 
   CancelArchiveSelection(){
@@ -230,8 +336,8 @@ export class HomePage implements OnInit {
   }
    
   finishCopyFile(file: Entry) {
-    let path = this.file.dataDirectory + this.folder;
-    let newPath = this.file.dataDirectory + this.folder + '/' + file.name;
+    let path = this.ROOT_DIRECTORY + this.folder;
+    let newPath = this.ROOT_DIRECTORY + this.folder + '/' + file.name;
    
     if (this.shouldMove) {
       if (this.copyFile.isDirectory) {
