@@ -3,7 +3,8 @@ import { File, Entry, FileEntry, IFile } from '@ionic-native/file/ngx';
 import { Platform, AlertController, ToastController } from '@ionic/angular';
 import { FileOpener } from '@ionic-native/file-opener/ngx';
 import { Router, ActivatedRoute } from '@angular/router';
-declare var require: any;
+var JSZip = require('jszip');
+//declare var require: any;
  
 @Component({
   selector: 'app-home',
@@ -224,68 +225,73 @@ export class HomePage implements OnInit {
   async FinishArchiveSelection(secureKey: string){
     console.log("Finish start.");
 
-    let currentURL = await this.file.resolveDirectoryUrl(this.ROOT_DIRECTORY + "/" + this.folder);
+    this.plt.ready().then(async () => {
 
-    var JSZip = require("jszip");
-    let zip = new JSZip();
+     //var currentURL = await this.file.resolveDirectoryUrl(this.ROOT_DIRECTORY + "/" + this.folder);
 
-    let self = this;
+      var zi = new JSZip();
 
-    // Iterate through each file.
-    for(let af of HomePage.archiveFiles){
-      let fURL = await this.file.resolveDirectoryUrl(this.ROOT_DIRECTORY + af.fullPath.replace(af.name, '')); 
-      let f:FileEntry = await this.file.getFile(fURL, af.name, { create: false });
+      var self = this;
 
-      console.log(`Start of file ${f.name}`);
+      // Iterate through each file.
+      for(let af of HomePage.archiveFiles){
+        let fURL = await this.file.resolveDirectoryUrl(this.ROOT_DIRECTORY + af.fullPath.replace(af.name, '')); 
+        let f:FileEntry = await this.file.getFile(fURL, af.name, { create: false });
 
-      // Get file data method.
-      const readUploadedFileAsText = (fi:FileEntry) => 
-      new Promise<Blob>((resolve, reject) => {
-        fi.file(function(file:IFile){
-          let fileReader = self.HackFileReader();
+        console.log(`Start of file ${f.name}`);
 
-          console.log("Start read");
-          console.log(file);
+        // Get file data method.
+        const readUploadedFileAsText = (fi:FileEntry) => 
+        new Promise<ArrayBuffer>((resolve, reject) => {
+          fi.file(function(file:IFile){
+            let fileReader = self.HackFileReader();
 
-          fileReader.onloadend = () => {console.log("On load end."); resolve( new Blob([fileReader.result], { type: file.type }) );};
-          //fileReader.onloadend = () => {console.log("On load end."); resolve(fileReader.result)};
-          fileReader.onerror = () => {console.log("Read error."); reject(fileReader.error)};
+            console.log("Start read");
+            console.log(file);
 
-          fileReader.readAsBinaryString(file);
-        },
-        function(){
-          reject("Problem getting file");
+            //fileReader.onloadend = () => {console.log("On load end."); resolve( new Blob([fileReader.result], { type: file.type }) );};
+            fileReader.onloadend = () => {console.log("On load end."); resolve(fileReader.result as ArrayBuffer);};
+            fileReader.onerror = () => {console.log("Read error."); reject(fileReader.error)};
+
+            fileReader.readAsArrayBuffer(file);
+          },
+          function(){
+            reject("Problem getting file");
+          });
         });
+
+        // Get file data.
+        let fileContents = await readUploadedFileAsText(f).catch(error => {
+          console.log(`Error on read ${error}`);
+        });
+        console.log(`Got file ${f.name}`);
+        console.log(fileContents);
+        zi.file(f.name, (fileContents as ArrayBuffer));
+      }
+
+      console.log(`end of loop.`);
+
+      // Write zip file to storage.
+      console.log(JSZip.support);
+
+      zi.generateAsync({type:"blob"}).then(async function(content) {
+        console.log("Hi.");
+
+        //await self.file.removeFile(self.ROOT_DIRECTORY + "/" + self.folder, "example.zip");
+
+        await self.file
+        .writeFile(
+          self.ROOT_DIRECTORY + "/" + self.folder,
+          "example.zip",
+          content
+        );
+
+        HomePage.archiveSelectionMode = false;
+        HomePage.archiveFiles = [];
+        self.loadDocuments();
       });
 
-      // Get file data.
-      let fileContents = await readUploadedFileAsText(f).catch(error => {
-        console.log(`Error on read ${error}`);
-      });
-      zip.file(f.name, (fileContents as Blob));
-    }
-
-    console.log(`end of loop.`);
-
-    // Write zip file to storage.
-    console.log(JSZip.support);
-
-    zip.generateAsync({type:"blob"}).then(async function(content) {
-      console.log("Hi.");
-
-      await self.file.removeFile(self.ROOT_DIRECTORY + "/" + self.folder, "example.zip");
-
-      await self.file
-      .writeFile(
-        self.ROOT_DIRECTORY + "/" + self.folder,
-        "example.zip",
-        content
-      );
     });
-
-    HomePage.archiveSelectionMode = false;
-    HomePage.archiveFiles = [];
-    self.loadDocuments();
   }
 
   CancelArchiveSelection(){

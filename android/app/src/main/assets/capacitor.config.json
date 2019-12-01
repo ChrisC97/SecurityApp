@@ -1,6 +1,6 @@
 {
   "appId": "com.cc.securityapp",
-  "appName": "SApp",
+  "appName": "securityapp",
   "bundledWebRuntime": false,
   "npmClient": "npm",
   "webDir": "www",

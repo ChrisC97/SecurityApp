@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">SApp</string>
-    <string name="title_activity_main">SApp</string>
+    <string name="app_name">securityapp</string>
+    <string name="title_activity_main">securityapp</string>
     <string name="package_name">com.cc.securityapp</string>
     <string name="custom_url_scheme">com.cc.securityapp</string>
 </resources>
