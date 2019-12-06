@@ -3,7 +3,10 @@ import { File, Entry, FileEntry, IFile } from '@ionic-native/file/ngx';
 import { Platform, AlertController, ToastController } from '@ionic/angular';
 import { FileOpener } from '@ionic-native/file-opener/ngx';
 import { Router, ActivatedRoute } from '@angular/router';
+import { AES256 } from '@ionic-native/aes-256/ngx';
+import { Zip } from '@ionic-native/zip/ngx';
 var JSZip = require('jszip');
+var CryptoJS = require("crypto-js");
 //declare var require: any;
  
 @Component({
@@ -17,6 +20,7 @@ export class HomePage implements OnInit {
   copyFile: Entry = null;
   shouldMove = false;
   ROOT_DIRECTORY = 'file:///';
+  secureIV: string = "AiGoePzlaswkK";
 
   // Info
   static archiveSelectionMode = false;
@@ -29,8 +33,11 @@ export class HomePage implements OnInit {
     private fileOpener: FileOpener,
     private router: Router,
     private route: ActivatedRoute,
-    private toastCtrl: ToastController
-  ) {}
+    private toastCtrl: ToastController,
+    private aes256: AES256,
+    private zip: Zip
+  ) { 
+  }
  
   ArchiveModeCheck(){
     return HomePage.archiveSelectionMode;
@@ -50,7 +57,7 @@ export class HomePage implements OnInit {
       // Reset for later copy/move operations
       this.copyFile = null;
       this.shouldMove = false;
-
+      
       // Naviagate to the folder (root directory + the directory of the file/folder).
       this.file.listDir(this.ROOT_DIRECTORY, this.folder).then(res => {
         this.directories = res;
@@ -171,9 +178,14 @@ export class HomePage implements OnInit {
       message: 'Please Enter your key',
       inputs: [
         {
+          name: 'fname',
+          type: 'text',
+          placeholder: 'File Name'
+        },
+        {
           name: 'key',
           type: 'text',
-          placeholder: ''
+          placeholder: 'Encryption Key'
         }
       ],
       buttons: [
@@ -185,7 +197,37 @@ export class HomePage implements OnInit {
         {
           text: 'Create',
           handler: data => {
-            this.FinishArchiveSelection(data.key);
+            this.FinishArchiveSelection(data.fname, data.key);
+          }
+        }
+      ]
+    });
+   
+    await alert.present();
+  }
+
+
+  async DecryptFilesEnter(file:FileEntry) {
+    let alert = await this.alertCtrl.create({
+      header: 'Enter Key',
+      message: 'Please Enter the key.',
+      inputs: [
+        {
+          name: 'key',
+          type: 'text',
+          placeholder: 'Encryption Key'
+        }
+      ],
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel',
+          cssClass: 'secondary'
+        },
+        {
+          text: 'Create',
+          handler: data => {
+            this.DecryptSelectedFile(file, data.key);
           }
         }
       ]
@@ -222,7 +264,21 @@ export class HomePage implements OnInit {
     }
   }
 
-  async FinishArchiveSelection(secureKey: string){
+  ab2str(buf:Uint8Array): string {
+    return String.fromCharCode.apply(null, new Uint8Array(buf));
+  }  
+
+  str2ab(str): ArrayBuffer {
+    var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
+    var bufView = new Uint8Array(buf);
+    for (var i=0, strLen=str.length; i < strLen; i++) {
+      bufView[i] = str.charCodeAt(i);
+    }
+    return buf;
+  }
+  
+
+  async FinishArchiveSelection(finalFileName:string, secureKey: string){
     console.log("Finish start.");
 
     this.plt.ready().then(async () => {
@@ -234,6 +290,7 @@ export class HomePage implements OnInit {
       var self = this;
 
       // Iterate through each file.
+      let fileLocations:string = "";
       for(let af of HomePage.archiveFiles){
         let fURL = await this.file.resolveDirectoryUrl(this.ROOT_DIRECTORY + af.fullPath.replace(af.name, '')); 
         let f:FileEntry = await this.file.getFile(fURL, af.name, { create: false });
@@ -248,8 +305,7 @@ export class HomePage implements OnInit {
 
             console.log("Start read");
             console.log(file);
-
-            //fileReader.onloadend = () => {console.log("On load end."); resolve( new Blob([fileReader.result], { type: file.type }) );};
+            
             fileReader.onloadend = () => {console.log("On load end."); resolve(fileReader.result as ArrayBuffer);};
             fileReader.onerror = () => {console.log("Read error."); reject(fileReader.error)};
 
@@ -267,6 +323,8 @@ export class HomePage implements OnInit {
         console.log(`Got file ${f.name}`);
         console.log(fileContents);
         zi.file(f.name, (fileContents as ArrayBuffer));
+        fileLocations += this.ROOT_DIRECTORY + af.fullPath + ":" + af.name + "\n";
+        await this.file.removeFile(this.ROOT_DIRECTORY + af.fullPath.replace(af.name, ''), af.name);
       }
 
       console.log(`end of loop.`);
@@ -274,16 +332,50 @@ export class HomePage implements OnInit {
       // Write zip file to storage.
       console.log(JSZip.support);
 
-      zi.generateAsync({type:"blob"}).then(async function(content) {
+      zi.generateAsync(
+        {type:"blob", compression: "DEFLATE", compressionOptions: { level: 9 }, comment: fileLocations
+      }).then(async function(content) {
         console.log("Hi.");
 
+        console.log(content);
+
         //await self.file.removeFile(self.ROOT_DIRECTORY + "/" + self.folder, "example.zip");
+        
+        const readFileAsBase64 = (sBlob:Blob) => 
+        new Promise<string>((resolve, reject) => {
+          let fileReader = self.HackFileReader();
+
+          console.log("Start read");
+          
+          fileReader.onloadend = () => {console.log("On load end."); resolve(fileReader.result as string);};
+          fileReader.onerror = () => {console.log("Read error."); reject(fileReader.error)};
+
+          fileReader.readAsDataURL(sBlob);
+        });
+
+
+        let contentsB64:string = await readFileAsBase64(content as Blob);
+
+        let actualContent:string = contentsB64.split(",")[1];
+
+        //let cAB = await new Response(content as Blob).text();
+
+        //let encyContent = await self.aes256.encrypt(secureKey, self.secureIV, cAB);
+
+        console.log("ORIGINAL (BASE64)");
+        console.log(actualContent);
+
+        let eencyContent = CryptoJS.AES.encrypt(actualContent, secureKey);
+        let encyContent = eencyContent.toString();
+
+        console.log("ENCRYPTED (BASE64)");
+        console.log(encyContent);
 
         await self.file
         .writeFile(
           self.ROOT_DIRECTORY + "/" + self.folder,
-          "example.zip",
-          content
+          finalFileName+".saf",
+          encyContent
         );
 
         HomePage.archiveSelectionMode = false;
@@ -312,11 +404,84 @@ export class HomePage implements OnInit {
     }
   }
 
+  async DecryptSelectedFile(file:FileEntry, givenKey:string){
+    let self = this;
+
+    // Get file data method.
+    const readUploadedFileAsText = (fi:FileEntry) => 
+    new Promise<string>((resolve, reject) => {
+      fi.file(function(file:IFile){
+        let fileReader = self.HackFileReader();
+
+        console.log("Start read");
+        console.log(file);
+        
+        fileReader.onloadend = () => {console.log("On load end."); resolve(fileReader.result as string);};
+        fileReader.onerror = () => {console.log("Read error."); reject(fileReader.error)};
+
+        fileReader.readAsText(file);
+      },
+      function(){
+        reject("Problem getting file");
+      });
+    });
+
+    let fileContents = await readUploadedFileAsText(file).catch(error => {
+      console.log(`Error on read ${error}`);
+    });
+
+    console.log("FILE CONTENTS");
+    console.log(fileContents);
+
+    let decryContent = CryptoJS.AES.decrypt(
+      fileContents, 
+      givenKey);
+
+    console.log("DECRYPTED WORD");
+    console.log(decryContent);
+
+    if(decryContent == ""){
+      // Wrong password.
+      await this.PrintMessage("Wrong Password.");
+    }else{      
+      // RIGHT PASSWORD.
+      console.log("DECRYPTED");
+      let dcUTF = decryContent.toString(CryptoJS.enc.Utf8);
+      console.log(dcUTF);
+
+      var zi = new JSZip();
+
+      // We have our zip result.
+      let result = await zi.loadAsync(dcUTF, {base64: true});
+      // Get the location each file should go.
+      let fileLocations = result.comment;
+      console.log(result.comment);
+
+
+      Object.keys(result.files).forEach(function(filename){
+        result.files[filename].async('text').then(async (fileContents) => {
+          console.log(result.files[filename]);
+          console.log(fileContents);
+          await self.file
+          .writeFile(
+            self.ROOT_DIRECTORY + "/" + self.folder,
+            filename,
+            fileContents
+          );
+        });
+      });
+
+      let path = this.ROOT_DIRECTORY + this.folder;
+      await this.file.removeFile(path, file.name);
+    }
+    self.loadDocuments();
+  }
+
   CheckIfFileInArchiveList(file: Entry){
     return HomePage.archiveFiles.includes(file);
   }
 
-  async itemClicked(file: Entry) {
+  async itemClicked(file: FileEntry) {
     // We're in the mode where we select the files to archive.
     if (this.copyFile) {
       if (!file.isDirectory) {
@@ -328,7 +493,10 @@ export class HomePage implements OnInit {
       }
       // Finish the ongoing operation
       this.finishCopyFile(file);
-    } else {
+  } else {
+      if(file.name.includes(".saf")){
+        this.DecryptFilesEnter(file);
+      }else 
       // Open the file or folder
       if (file.isFile) {
         this.fileOpener.open(file.nativeURL, 'text/plain');

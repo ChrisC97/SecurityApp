@@ -12,6 +12,9 @@ import { AppRoutingModule } from './app-routing.module';
 import { File } from '@ionic-native/file/ngx';
 import { FileOpener } from '@ionic-native/file-opener/ngx';
 
+import { AES256 } from '@ionic-native/aes-256/ngx';
+import { Zip } from '@ionic-native/zip/ngx';
+
 @NgModule({
   declarations: [AppComponent],
   entryComponents: [],
@@ -21,7 +24,9 @@ import { FileOpener } from '@ionic-native/file-opener/ngx';
     SplashScreen,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     File,
-    FileOpener
+    FileOpener,
+    AES256,
+    Zip
   ],
   bootstrap: [AppComponent]
 })
